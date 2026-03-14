@@ -2,6 +2,8 @@
 
 **A structured specification language for LLMs.**
 
+[Try the Playground](https://runcor.ai/rpp/#playground)
+
 R++ eliminates ambiguity from LLM prompts. Instead of writing prose that an LLM has to interpret, you write a structured script with typed blocks, named values, and explicit assertions. The LLM reads the script and produces exactly what it describes.
 
 ## The Problem
