@@ -2,7 +2,7 @@
 
 **A structured specification language for LLMs.**
 
-[Try the Playground](https://runcor.ai/rpp/#playground)
+[Try the Playground](https://rpp.runcor.ai) · [Website](https://runcor.ai/rpp)
 
 R++ eliminates ambiguity from LLM prompts. Instead of writing prose that an LLM has to interpret, you write a structured script with typed blocks, named values, and explicit assertions. The LLM reads the script and produces exactly what it describes.
 
@@ -154,6 +154,7 @@ MIT — see [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  <a href="https://runcor.ai">runcor.ai</a> &middot;
+  <a href="https://rpp.runcor.ai">Playground</a> &middot;
+  <a href="https://runcor.ai/rpp">Website</a> &middot;
   <a href="https://github.com/runcor-ai/rpp">GitHub</a>
 </p>
