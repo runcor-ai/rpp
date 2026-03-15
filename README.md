@@ -156,5 +156,6 @@ MIT — see [LICENSE](LICENSE) for details.
 <p align="center">
   <a href="https://rpp.runcor.ai">Playground</a> &middot;
   <a href="https://runcor.ai/rpp">Website</a> &middot;
-  <a href="https://github.com/runcor-ai/rpp">GitHub</a>
+  <a href="https://github.com/runcor-ai/rpp">GitHub</a> &middot;
+  <a href="https://discord.gg/dyzHxEyg">Discord</a>
 </p>
