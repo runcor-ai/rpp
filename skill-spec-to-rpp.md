@@ -101,26 +101,35 @@ If [`rpp-parser`](https://github.com/runcor-ai/rpp-parser) is available in the e
 ```ts
 import { parse, validate } from 'rpp-parser';
 
-const { ast, diagnostics } = parse(generatedRpp);
-const semanticErrors = [...diagnostics, ...validate(ast)];
-const errors = semanticErrors.filter(d => d.severity === 'error');
+const { ast, diagnostics: parseDiagnostics } = parse(generatedRpp);
+// Pass engine-provided primitive names so they aren't flagged as "undefined components".
+const enginePrimitives = ['AuthMiddleware', 'RateLimiter', 'ErrorHandler', 'Router', 'EventLoop' /* etc. */];
+const semanticDiagnostics = validate(ast, { externalNames: enginePrimitives });
+const allDiagnostics = [...parseDiagnostics, ...semanticDiagnostics];
+const errors = allDiagnostics.filter(d => d.severity === 'error');
+const warnings = allDiagnostics.filter(d => d.severity === 'warning');
 ```
 
-**If `errors.length === 0`**: the R++ is structurally and semantically valid. Output it.
+**If `errors.length === 0`**: the R++ is structurally valid. Output it. Mention any warnings in the summary so the user can decide whether to act on them.
 
 **If `errors.length > 0`**: regenerate the R++ using the diagnostics as feedback. For each diagnostic:
 
-- `code: 'unclosed-block'` → fix the brace nesting in the offending span
-- `code: 'invalid-token-syntax'` → check TOKENS uses `name:value` not `name=value`
-- `code: 'undeclared-token-reference'` → either add the missing TOKEN or remove the reference
-- `code: 'undefined-component'` → COMPONENT in STRUCTURE has no matching definition; either add it or remove from STRUCTURE
-- `code: 'duplicate-token-name'` → rename or merge
-- `code: 'invalid-checklist-item'` → CHECKLIST item isn't binary/falsifiable; rewrite
-- `code: 'unknown-block'` → check spelling against the 10 valid block keywords (TARGET, TOKENS, FORMAT, MAP, DATA, INIT, STRUCTURE, COMPONENT, BEHAVIOR, CHECKLIST) plus aliases (SECTION, VIEW)
+- `code: 'unclosed-block'` (error) → fix the brace nesting in the offending span
+- `code: 'invalid-token-syntax'` (error) → check TOKENS uses `name:value` not `name=value`
+- `code: 'duplicate-token-name'` (warning) → rename or merge
+- `code: 'invalid-checklist-item'` (error or warning) → CHECKLIST item isn't binary/falsifiable; rewrite
+- `code: 'unknown-block-accepted-as-extension'` (extension) → unknown block accepted; check spelling against the 10 valid keywords (TARGET, TOKENS, FORMAT, MAP, DATA, INIT, STRUCTURE, COMPONENT, BEHAVIOR, CHECKLIST) + aliases (SECTION, VIEW). If intentional, add to language reference.
 
-Each diagnostic includes a `span: {line, column, length}` pointing exactly at the problem. Use those spans to target the fix — don't rewrite the whole script when one block is broken.
+**Special handling for `code: 'undefined-component'`** (warning by default): a name in STRUCTURE has no COMPONENT/SECTION/VIEW definition. Two interpretations:
 
-**Iterate up to 3 times.** If errors persist after 3 regeneration attempts, output the best-effort R++ with a `// PARSE ERRORS:` comment block at the top listing the unresolved diagnostics — never silently ship invalid R++.
+1. **Engine-provided primitive** (AuthMiddleware, RateLimiter, ErrorHandler, Router, etc.) — the framework provides it. Add the name to `externalNames` in the next validate() call to suppress the warning.
+2. **Genuinely missing component** — you forgot to define it. Add `COMPONENT Name { ... }` to the spec.
+
+The parser cannot tell which interpretation applies — that's a domain decision. Default behavior is `warning` not `error` to avoid forcing every engine primitive to be redeclared. Pass `{ strictComponentResolution: true }` to elevate to errors when running in a context where every name MUST be defined (e.g. standalone spec validation with no host engine).
+
+Each diagnostic includes a `span: {line, column}` pointing exactly at the problem. Use those spans to target the fix — don't rewrite the whole script when one block is broken.
+
+**Iterate up to 3 times on errors only.** Warnings should be reported but don't block output. If errors persist after 3 regeneration attempts, output the best-effort R++ with a `// PARSE ERRORS:` comment block at the top listing the unresolved diagnostics — never silently ship invalid R++.
 
 **If `rpp-parser` is NOT available**: skip Step 10 and output the R++ from Step 9. The manual Review is the only check available; flag in the summary that parser-validation was not run.
 
