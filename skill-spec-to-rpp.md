@@ -92,6 +92,40 @@ Before outputting, verify:
 - [ ] DATA EXACT is used for specific items, DATA for illustrative items
 - [ ] No blocks are empty
 
+### Step 10: Parser-validated finalization
+
+Step 9 is the manual self-review. Step 10 is the mechanical check that catches what self-review misses — typos, mismatched braces, undeclared TOKENS references, dangling COMPONENT names in STRUCTURE.
+
+If [`rpp-parser`](https://github.com/runcor-ai/rpp-parser) is available in the environment, use it to validate the generated R++ before returning the final output:
+
+```ts
+import { parse, validate } from 'rpp-parser';
+
+const { ast, diagnostics } = parse(generatedRpp);
+const semanticErrors = [...diagnostics, ...validate(ast)];
+const errors = semanticErrors.filter(d => d.severity === 'error');
+```
+
+**If `errors.length === 0`**: the R++ is structurally and semantically valid. Output it.
+
+**If `errors.length > 0`**: regenerate the R++ using the diagnostics as feedback. For each diagnostic:
+
+- `code: 'unclosed-block'` → fix the brace nesting in the offending span
+- `code: 'invalid-token-syntax'` → check TOKENS uses `name:value` not `name=value`
+- `code: 'undeclared-token-reference'` → either add the missing TOKEN or remove the reference
+- `code: 'undefined-component'` → COMPONENT in STRUCTURE has no matching definition; either add it or remove from STRUCTURE
+- `code: 'duplicate-token-name'` → rename or merge
+- `code: 'invalid-checklist-item'` → CHECKLIST item isn't binary/falsifiable; rewrite
+- `code: 'unknown-block'` → check spelling against the 10 valid block keywords (TARGET, TOKENS, FORMAT, MAP, DATA, INIT, STRUCTURE, COMPONENT, BEHAVIOR, CHECKLIST) plus aliases (SECTION, VIEW)
+
+Each diagnostic includes a `span: {line, column, length}` pointing exactly at the problem. Use those spans to target the fix — don't rewrite the whole script when one block is broken.
+
+**Iterate up to 3 times.** If errors persist after 3 regeneration attempts, output the best-effort R++ with a `// PARSE ERRORS:` comment block at the top listing the unresolved diagnostics — never silently ship invalid R++.
+
+**If `rpp-parser` is NOT available**: skip Step 10 and output the R++ from Step 9. The manual Review is the only check available; flag in the summary that parser-validation was not run.
+
+This step is the deterministic complement to LLM self-review: the parser catches structural errors the LLM overlooks because they're ambiguous-but-not-clearly-wrong in natural language.
+
 ---
 
 ## Conversion Rules
